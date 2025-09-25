@@ -17,5 +17,12 @@
   "bugs": {
     "url": "https://github.com/nagyimmobilien/control-panel/issues"
   },
-  "homepage": "https://github.com/nagyimmobilien/control-panel#readme"
+  "homepage": "https://github.com/nagyimmobilien/control-panel#readme",
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "mongodb": "^6.20.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
 }
