@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   try {
     const client = await clientPromise;
     const db = client.db("immobilien");
-    const districts = await db.collection("districts").find({}).toArray();
+    const districts = await db.collection("districts").find({}).sort({ number: 1 }).toArray();
 
     res.status(200).json(districts);
   } catch (err) {
