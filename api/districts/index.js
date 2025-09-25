@@ -1,4 +1,4 @@
-import clientPromise from "../../config/database";
+import clientPromise from "../../config/database.js";
 
 export default async function handler(req, res) {
   try {
