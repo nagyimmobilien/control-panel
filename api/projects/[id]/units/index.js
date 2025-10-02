@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   try {
     const client = await clientPromise;
     const db = client.db();
-    const units = await db.collection("units").find({ projectId: new ObjectId(id) }).toArray();
+    const units = await db.collection("units").find({ project: new ObjectId(id) }).toArray();
 
     if (!units) {
       return res.status(404).json({ error: "Units not found" });
