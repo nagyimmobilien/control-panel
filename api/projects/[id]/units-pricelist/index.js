@@ -1,22 +1,37 @@
 import chromium from "@sparticuz/chromium";
+import mongoose from "mongoose";
 import puppeteer from "puppeteer-core";
-import clientPromise from "../../../../config/database.js";
-import { ObjectId } from "mongodb";
-import Project from "../../../../modules/projects/model/project.model.js";
+import connectDB from "../../../../config/database/mongodb.js";
+import Project from "../../../../modules/project/model/project.model.js";
+import District from "../../../../modules/district/district.model.js";
+import Unit from "../../../../modules/unit/model/unit.model.js";
 
 const generateHTMLContent = (projectWithUnitsAndDistrict) => {
-  const { district, project, units } = projectWithUnitsAndDistrict;
+  const { district, units } = projectWithUnitsAndDistrict;
+  const project = projectWithUnitsAndDistrict;
+
   return `
   <!DOCTYPE html>
   <html>
     <head>
       <meta charset="UTF-8">
-      <title></title>
+      <title>${project.name} – Árlista</title>
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 4px; text-align: center; }
+        th { background-color: #f5f5f5; }
+        .active-status { color: green; font-weight: bold; }
+        .inactive-status { color: red; font-weight: bold; }
+      </style>
     </head>
     <body>
       <header>
-        ${JSON.stringify(district.zipCode)}
+        <h2>${project.name}</h2>
+        <p><strong>Cím:</strong> ${project.address}</p>
+        <p><strong>Kerület:</strong> ${district?.name || ""} (${district?.zipCode || ""})</p>
       </header>
+
       <table>
         <thead>
           <tr>
@@ -39,92 +54,72 @@ const generateHTMLContent = (projectWithUnitsAndDistrict) => {
           </tr>
         </thead>
         <tbody>
-        ${units.map(unit => {
-          return `
-            <tr>
-              <td>${unit.houseNumber}</td>
-              <td>
-                <a target="_blank" href="${unit.floorPlanUrl}">TOP ${unit.apartmentNumber}</a>
-              </td>
-              <td>${unit.floorNumber}</td>
-              <td>${unit.roomNumber}</td>
-              <td>${unit.livingArea}</td>
-              <td>${unit.loggiaArea}</td>
-              <td>${unit.balconyArea}</td>
-              <td>${unit.terraceArea}</td>
-              <td>${unit.roofTerraceArea}</td>
-              <td>${unit.gardenTerraceArea}</td>                                 
-              <td>${unit.gardenArea}</td>                                 
-              <td>${unit.sumOfOutsideAreas}</td>                                 
-              <td>${unit.sumOfAllAreas}</td>                                                              
-              <td>${unit.listingPriceForInvestors}</td>
-              <td>${unit.listingPriceForPersonalUse}</td>
-              <td class="${unit.status === "Elérhető" ? "active-status" : "inactive-status"}">${unit.status}</td>
-            </tr>
-          `;
-        }).join('')}
+        ${units.map(unit => `
+          <tr>
+            <td>${unit.houseNumber || ""}</td>
+            <td><a target="_blank" href="${unit.floorPlanUrl || "#"}">TOP ${unit.apartmentNumber || ""}</a></td>
+            <td>${unit.floorNumber || ""}</td>
+            <td>${unit.roomNumber || ""}</td>
+            <td>${unit.livingArea || ""}</td>
+            <td>${unit.loggiaArea || ""}</td>
+            <td>${unit.balconyArea || ""}</td>
+            <td>${unit.terraceArea || ""}</td>
+            <td>${unit.roofTerraceArea || ""}</td>
+            <td>${unit.gardenTerraceArea || ""}</td>                                 
+            <td>${unit.gardenArea || ""}</td>                                 
+            <td>${unit.sumOfOutsideAreas || ""}</td>                                 
+            <td>${unit.sumOfAllAreas || ""}</td>                                                              
+            <td>${unit.listingPriceForInvestors || ""}</td>
+            <td>${unit.listingPriceForPersonalUse || ""}</td>
+            <td class="${unit.status === "Elérhető" ? "active-status" : "inactive-status"}">${unit.status || ""}</td>
+          </tr>
+        `).join('')}
         </tbody>
       </table>
     </body>
   </html>
   `;
-}
+};
 
 export default async function handler(req, res) {
   try {
-  
     res.setHeader('Access-Control-Allow-Origin', 'https://becsingatlan.com');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     const { id } = req.query;
 
-    if (!id || typeof id !== "string" || !ObjectId.isValid(id)) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "Invalid project ID" });
     }
 
-    const client = await clientPromise;
-    const db = client.db();
-    
-    const project = await db.collection("projects").aggregate([
-    { 
-      $match: { _id: new ObjectId(id) } 
-    },
-    {
-      $lookup: {
-        from: "units",
-        localField: "_id",
-        foreignField: "project",
-        as: "units",
-      },
-    },
-    {
-      $lookup: {
-        from: "districts",
-        localField: "district",
-        foreignField: "_id",
-        as: "district",
-      },
-    },
-    { 
-      $unwind: { path: "$district", preserveNullAndEmptyArrays: true } 
-    },
-    ]).toArray();
+    await connectDB();
 
-    const projectWithUnitsAndDistrict = project[0];
+    const project = await Project.findById(id)
+      .populate("units")
+      .populate("district")
+      .lean({ virtuals: true });
 
-    
-    if (!projectWithUnitsAndDistrict) return res.status(404).json({ error: "Project not found" });
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    const projectWithUnitsAndDistrict = {
+      ...project,
+      units: project.units || [],
+      district: project.district || {}
+    };
 
     /*
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: true,
-      ignoreHTTPSErrors: true
-    });
+      const browser = await puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: true,
+        ignoreHTTPSErrors: true
+      });
     */
+
     const browser = await puppeteer.launch({
       executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
       headless: true,
@@ -144,12 +139,13 @@ export default async function handler(req, res) {
     });
 
     await browser.close();
-  
+
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${project}_arlista.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${project.name}_arlista.pdf"`);
     res.send(pdfBuffer);
+
   } catch (err) {
-    console.error("Failed generate units pricelist pdf:", err);
-    res.status(500).json({ error: "Failed to generate units pricelist pdf:" });
+    console.error("Failed to generate units pricelist pdf:", err);
+    res.status(500).json({ error: "Failed to generate units pricelist pdf" });
   }
 }
