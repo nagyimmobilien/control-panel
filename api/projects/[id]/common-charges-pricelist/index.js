@@ -6,8 +6,6 @@ import Project from "../../../../modules/project/model/project.model.js";
 import District from "../../../../modules/district/district.model.js";
 import Unit from "../../../../modules/unit/model/unit.model.js";
 
-const formattedDate = (date = new Date()) => 
-  `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}.`;
 
 const generateHeaderElement = (projectWithUnitsAndDistrict) => {
   const { district, units } = projectWithUnitsAndDistrict;
@@ -30,15 +28,18 @@ const generateHeaderElement = (projectWithUnitsAndDistrict) => {
       font-size: 10px;
       padding: 20px 40px;
     ">
+      <!-- Left: Logo -->
       <div style="flex: 0 0 auto;">
         <img src="${logoBase64}" width="150" />
       </div>
 
+      <!-- Center: Title -->
       <div style="flex: 1; text-align: center;"> 
         <h1>${district?.zipCode} ${project.address}.</h1>
         <p style="font-size: 14px;">Lakás árlista</p>
       </div>
 
+      <!-- Right: Contact info -->
       <div style="flex: 0 0 auto; text-align: right; line-height: 1.2;">
         <p>A-1040 Wien</p>
         <p>Brahmsplatz 7/3.OG/Top 12A</p>
@@ -81,21 +82,9 @@ const generateFooterElement = () => {
   `;
 }
 
-
 const generateHTMLContent = (projectWithUnitsAndDistrict) => {
   const { district, units } = projectWithUnitsAndDistrict;
   const project = projectWithUnitsAndDistrict;
-
-  function formatEuroWithSpaces(number) {
-    return new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })
-    .format(number)
-    .replace(/\./g, ' ');
-  }
 
   return `
   <!DOCTYPE html>
@@ -121,16 +110,10 @@ const generateHTMLContent = (projectWithUnitsAndDistrict) => {
             <th>Emelet</th>
             <th>Szobák</th>
             <th>Alapterület (m²)</th>
-            <th>Loggia (m²)</th>
-            <th>Erkély (m²)</th>
-            <th>Terasz (m²)</th>
-            <th>Tetőterasz (m²)</th>
-            <th>Kerti terasz (m²)</th>
-            <th>Kert (m²)</th>
-            <th>Teljes külső (m²)</th>
-            <th>Összterület (m²)</th>
-            <th>Eladási ár (befektetés)</th>
-            <th>Eladási ár (saját)</th> 
+            <th>Lakás közös költség</th>
+            <th>Lift közös költség</th> 
+            <th>Felújítási alap összege</th>
+            <th>Teljes közös költség</th>
             <th>Státusz</th>
           </tr>
         </thead>
@@ -138,22 +121,14 @@ const generateHTMLContent = (projectWithUnitsAndDistrict) => {
         ${units.map(unit => `
           <tr>
             <td>${unit.houseNumber || ""}</td>
-            <td>
-              <a target="_blank" href="${unit.floorPlanUrl || "#"}">TOP ${unit.unitNumber || ""}</a>
-            </td>
+            <td><a target="_blank" href="${unit.floorPlanUrl || "#"}">TOP ${unit.apartmentNumber || ""}</a></td>
             <td>${unit.floorNumber || ""}</td>
             <td>${unit.roomNumber || ""}</td>
-            <td>${unit.livingArea || ""}</td>
-            <td>${unit.loggiaArea || "-"}</td>
-            <td>${unit.balconyArea || "-"}</td>
-            <td>${unit.terraceArea || "-"}</td>
-            <td>${unit.roofTerraceArea || "-"}</td>
-            <td>${unit.gardenTerraceArea || "-"}</td>                                 
-            <td>${unit.gardenArea || "-"}</td>                                 
-            <td>${unit.sumOfOutsideAreas || "-"}</td>                                 
-            <td>${unit.sumOfAllAreas || "-"}</td>                                                              
-            <td>${formatEuroWithSpaces(unit.listingPriceForInvestors) || ""}</td>
-            <td>${formatEuroWithSpaces(unit.listingPriceForPersonalUse) || ""}</td>
+            <td>${unit.livingArea || ""}</td>                                                            
+            <td>${unit.commonCharges.basic || ""}</td>
+            <td>${unit.commonCharges.elevator || ""}</td>
+            <td>${unit.commonCharges.reserveFund || ""}</td>
+            <td>${unit.sumOfCommonCharges || ""}</td>
             <td class="${unit.status === "Elérhető" ? "active-status" : "inactive-status"}">${unit.status || ""}</td>
           </tr>
         `).join('')}
